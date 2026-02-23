@@ -32,6 +32,7 @@ export class CanvasRenderer {
 
     this.drawHud(state);
     this.drawOverlay(state);
+    this.drawCredit();
   }
 
   private drawWorld(state: GameState): void {
@@ -192,6 +193,18 @@ export class CanvasRenderer {
       ctx.fillText('PRESS ENTER TO RESTART', this.size / 2, this.size / 2 + 46);
     }
 
+    ctx.restore();
+  }
+
+  private drawCredit(): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#f5f5f5';
+    ctx.font = '12px "Courier New", monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('By David Bachman and GPT 5.3 CODEX.', this.size - 16, this.size - 12);
     ctx.restore();
   }
 

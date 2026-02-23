@@ -3,3 +3,6 @@ dist/
 coverage/
 .vite/
 playwright-output/
+output/
+*.tsbuildinfo
+.DS_Store
