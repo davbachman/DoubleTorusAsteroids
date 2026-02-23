@@ -105,10 +105,17 @@ export class InputManager {
     }
   };
 
+  private onPointerInteraction = (): void => {
+    this.onInteraction?.();
+  };
+
   attach(target: Window): void {
     if (this.attached) return;
     target.addEventListener('keydown', this.onKeyDown, { passive: false });
     target.addEventListener('keyup', this.onKeyUp, { passive: false });
+    target.addEventListener('pointerdown', this.onPointerInteraction, { passive: true });
+    target.addEventListener('mousedown', this.onPointerInteraction, { passive: true });
+    target.addEventListener('touchstart', this.onPointerInteraction, { passive: true });
     this.attached = true;
   }
 
@@ -116,6 +123,9 @@ export class InputManager {
     if (!this.attached) return;
     target.removeEventListener('keydown', this.onKeyDown);
     target.removeEventListener('keyup', this.onKeyUp);
+    target.removeEventListener('pointerdown', this.onPointerInteraction);
+    target.removeEventListener('mousedown', this.onPointerInteraction);
+    target.removeEventListener('touchstart', this.onPointerInteraction);
     this.attached = false;
   }
 

@@ -1,6 +1,7 @@
 import type { AudioEventName, AudioState, UfoType } from '../types';
 
 const DEFAULT_AUDIO_STATE: AudioState = { unlocked: false, muted: false };
+const MASTER_GAIN_VALUE = 0.62;
 
 type AudioContextCtor = new () => AudioContext;
 
@@ -25,13 +26,21 @@ export class AudioEngine {
   }
 
   async unlock(): Promise<void> {
-    this.ensureContext();
-    if (!this.ctx) return;
-    await this.ctx.resume();
-    this.state.unlocked = this.ctx.state === 'running';
-    if (this.state.unlocked) {
-      this.ensureContinuousNodes();
-      this.applyMute();
+    try {
+      this.ensureContext();
+      if (!this.ctx) return;
+      if (this.ctx.state !== 'running') {
+        await this.ctx.resume();
+      }
+      this.state.unlocked = this.ctx.state === 'running';
+      if (this.state.unlocked) {
+        this.ensureContinuousNodes();
+        this.heartbeatTimer = 0;
+        this.applyMute();
+      }
+    } catch (error) {
+      this.state.unlocked = false;
+      console.warn('Audio unlock failed', error);
     }
   }
 
@@ -64,7 +73,7 @@ export class AudioEngine {
     if (!this.ctx || !this.thrustGain || !this.thrustOsc) return;
     const now = this.ctx.currentTime;
     this.thrustGain.gain.cancelScheduledValues(now);
-    this.thrustGain.gain.setTargetAtTime(active && !this.state.muted ? 0.045 : 0.00001, now, 0.02);
+    this.thrustGain.gain.setTargetAtTime(active && !this.state.muted ? 0.11 : 0.00001, now, 0.02);
     this.thrustOsc.frequency.setTargetAtTime(active ? 95 : 70, now, 0.04);
   }
 
@@ -74,7 +83,7 @@ export class AudioEngine {
     if (!this.ctx || !this.ufoGain || !this.ufoOsc) return;
     const now = this.ctx.currentTime;
     this.ufoGain.gain.cancelScheduledValues(now);
-    this.ufoGain.gain.setTargetAtTime(active && !this.state.muted ? (type === 'large' ? 0.03 : 0.02) : 0.00001, now, 0.03);
+    this.ufoGain.gain.setTargetAtTime(active && !this.state.muted ? (type === 'large' ? 0.075 : 0.055) : 0.00001, now, 0.03);
     this.ufoOsc.frequency.setTargetAtTime(type === 'large' ? 120 : 210, now, 0.1);
   }
 
@@ -91,34 +100,34 @@ export class AudioEngine {
     if (!this.state.unlocked || this.state.muted) return;
     switch (name) {
       case 'playerFire':
-        this.beep({ type: 'square', frequency: 660, duration: 0.05, gain: 0.035, slideTo: 440 });
+        this.beep({ type: 'square', frequency: 660, duration: 0.05, gain: 0.085, slideTo: 440 });
         break;
       case 'asteroidExplosionLarge':
-        this.noiseBurst(0.16, 0.07, 220);
+        this.noiseBurst(0.16, 0.16, 220);
         break;
       case 'asteroidExplosionMedium':
-        this.noiseBurst(0.12, 0.05, 350);
+        this.noiseBurst(0.12, 0.11, 350);
         break;
       case 'asteroidExplosionSmall':
-        this.noiseBurst(0.08, 0.035, 520);
+        this.noiseBurst(0.08, 0.08, 520);
         break;
       case 'shipDeath':
-        this.beep({ type: 'sawtooth', frequency: 320, duration: 0.28, gain: 0.05, slideTo: 45 });
-        this.noiseBurst(0.22, 0.04, 1400);
+        this.beep({ type: 'sawtooth', frequency: 320, duration: 0.28, gain: 0.11, slideTo: 45 });
+        this.noiseBurst(0.22, 0.09, 1400);
         break;
       case 'ufoFire':
-        this.beep({ type: 'triangle', frequency: 430, duration: 0.07, gain: 0.03, slideTo: 250 });
+        this.beep({ type: 'triangle', frequency: 430, duration: 0.07, gain: 0.075, slideTo: 250 });
         break;
       case 'hyperspace':
-        this.beep({ type: 'sine', frequency: 240, duration: 0.22, gain: 0.045, slideTo: 1200 });
+        this.beep({ type: 'sine', frequency: 240, duration: 0.22, gain: 0.095, slideTo: 1200 });
         break;
       case 'extraLife':
-        this.beep({ type: 'square', frequency: 660, duration: 0.08, gain: 0.04, slideTo: 880 });
-        this.beep({ type: 'square', frequency: 880, duration: 0.1, gain: 0.04, delay: 0.09, slideTo: 1320 });
+        this.beep({ type: 'square', frequency: 660, duration: 0.08, gain: 0.085, slideTo: 880 });
+        this.beep({ type: 'square', frequency: 880, duration: 0.1, gain: 0.085, delay: 0.09, slideTo: 1320 });
         break;
       case 'gameOver':
-        this.beep({ type: 'triangle', frequency: 280, duration: 0.25, gain: 0.05, slideTo: 160, delay: 0.0 });
-        this.beep({ type: 'triangle', frequency: 220, duration: 0.28, gain: 0.05, slideTo: 90, delay: 0.2 });
+        this.beep({ type: 'triangle', frequency: 280, duration: 0.25, gain: 0.105, slideTo: 160, delay: 0.0 });
+        this.beep({ type: 'triangle', frequency: 220, duration: 0.28, gain: 0.105, slideTo: 90, delay: 0.2 });
         break;
     }
   }
@@ -129,7 +138,7 @@ export class AudioEngine {
     if (!Ctor) return;
     this.ctx = new Ctor();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.22;
+    this.master.gain.value = MASTER_GAIN_VALUE;
     this.master.connect(this.ctx.destination);
     this.noiseBuffer = this.buildNoiseBuffer();
   }
@@ -174,7 +183,7 @@ export class AudioEngine {
 
   private applyMute(): void {
     if (!this.master) return;
-    this.master.gain.value = this.state.muted ? 0 : 0.22;
+    this.master.gain.value = this.state.muted ? 0 : MASTER_GAIN_VALUE;
   }
 
   private buildNoiseBuffer(): AudioBuffer | null {
@@ -238,6 +247,6 @@ export class AudioEngine {
   }
 
   private playPulse(): void {
-    this.beep({ type: 'square', frequency: 110, duration: 0.07, gain: 0.026, slideTo: 90 });
+    this.beep({ type: 'square', frequency: 110, duration: 0.07, gain: 0.08, slideTo: 90 });
   }
 }

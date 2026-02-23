@@ -154,6 +154,9 @@ export class CanvasRenderer {
     if (state.audio.muted) {
       ctx.fillText('MUTED', this.size - 92, this.size - 36);
     }
+    if (!state.audio.unlocked) {
+      ctx.fillText('CLICK OR PRESS A KEY FOR AUDIO', this.size / 2 - 140, this.size - 36);
+    }
 
     if (state.mode === 'paused') {
       ctx.fillText('PAUSED', this.size / 2 - 36, 14);
