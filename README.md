@@ -4,6 +4,8 @@ Browser game: a classic Asteroids-style clone with an octagonal playfield and ed
 
 Live app (GitHub Pages): [https://davbachman.github.io/DoubleTorusAsteroids/](https://davbachman.github.io/DoubleTorusAsteroids/)
 
+Thanks to Edmund Harriss for the idea for this app!
+
 ## How To Play
 
 - `Enter`: start / restart
